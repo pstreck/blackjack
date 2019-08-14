@@ -47,7 +47,8 @@ class Game:
             elif action == PlayerAction.SPLIT:
                 split_hand = player.new_hand(bet=hand.bet)
                 split_hand.cards.append(hand.cards.pop())
-                stop = True
+
+                hand.deal(self.shoe.draw())
             elif action == PlayerAction.STAND:
                 stop = True
 

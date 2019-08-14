@@ -87,9 +87,12 @@ class TestGame(TestCase):
         game.players[0].bankroll -= game.settings.min_bet
 
         game.play_hand(game.players[0], game.players[0].hands[0])
+        game.play_hand(game.players[0], game.players[0].hands[1])
 
         self.assertEqual(bankroll - (game.settings.min_bet * 2), game.players[0].bankroll)
-        self.assertGreaterEqual(2, len(game.players[0].hands))
+        self.assertEqual(2, len(game.players[0].hands))
+        self.assertLessEqual(2, len(game.players[0].hands[0].cards))
+        self.assertLessEqual(2, len(game.players[0].hands[1].cards))
         self.assertEqual(game.settings.min_bet, game.players[0].hands[0].bet)
         self.assertEqual(game.settings.min_bet, game.players[0].hands[1].bet)
 
