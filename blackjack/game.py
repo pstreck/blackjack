@@ -18,13 +18,12 @@ class Game:
         self.round_count = 0
         self.shoe = Shoe(num_decks=self.settings.num_decks)
 
-    def add_player(self, bankroll, bet_strategy_type=None, player_limit=None):
-        self.players.insert(len(self.players) - 1,
-                            Player(self.settings,
-                                   bankroll=bankroll,
-                                   bet_strategy_type=bet_strategy_type,
-                                   number=len(self.players),
-                                   player_limit=player_limit))
+    def add_player(self, player_settings=None):
+        player_settings = player_settings if player_settings else {}
+        player_settings['game_settings'] = self.settings
+
+        player_settings['number'] = len(self.players)
+        self.players.insert(len(self.players) - 1, Player(player_settings))
 
     def play_hand(self, player, hand):
         stop = False

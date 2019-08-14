@@ -17,17 +17,31 @@ class BetStrategyTest(TestCase):
     def test_bet_limit_game(self):
         limit = 25
 
-        strategy = BetStrategy(GameSettings(min_bet=limit * 2, max_bet=limit))
+        settings = {
+            'game_settings': GameSettings(min_bet=limit * 2, max_bet=limit)
+        }
+
+        strategy = BetStrategy(settings)
         self.assertEqual(limit, strategy.bet())
 
     def test_bet_limit_player(self):
         limit = 0
 
-        strategy = BetStrategy(BetStrategyTest.game_settings, player_limit=limit)
+        settings = {
+            'bet_limit': limit,
+            'game_settings': BetStrategyTest.game_settings
+        }
+
+        strategy = BetStrategy(settings)
         self.assertEqual(limit, strategy.bet())
 
     def test_bet_strategy_martingale(self):
-        strategy = BetStrategy(BetStrategyTest.game_settings, strategy_type=BetStrategyType.MARTINGALE)
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.MARTINGALE
+        }
+
+        strategy = BetStrategy(settings)
         self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
 
         strategy.last_hand = Hand()
@@ -38,7 +52,12 @@ class BetStrategyTest(TestCase):
         self.assertEqual(BetStrategyTest.game_settings.min_bet * 2, strategy.bet())
 
     def test_bet_strategy_parlay(self):
-        strategy = BetStrategy(BetStrategyTest.game_settings, strategy_type=BetStrategyType.PARLAY)
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.PARLAY
+        }
+
+        strategy = BetStrategy(settings)
         self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
 
         strategy.last_hand = Hand()
@@ -47,13 +66,19 @@ class BetStrategyTest(TestCase):
         self.assertEqual(BetStrategyTest.game_settings.min_bet * 2, strategy.bet())
 
     def test_bet_strategy_series(self):
-        strategy = BetStrategy(BetStrategyTest.game_settings, strategy_type=BetStrategyType.SERIES)
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.SERIES
+        }
+
+        strategy = BetStrategy(settings)
         with self.assertRaises(ValueError):
             strategy.bet()
 
-        series = [1, 2, 3]
-        strategy = BetStrategy(BetStrategyTest.game_settings, series=series, strategy_type=BetStrategyType.SERIES)
-        for multiplier in series:
+        settings['series'] = [1, 2, 3]
+        strategy = BetStrategy(settings)
+
+        for multiplier in settings['series']:
             self.assertEqual(BetStrategyTest.game_settings.min_bet * multiplier, strategy.bet())
 
         strategy.last_hand = Hand()
@@ -61,8 +86,27 @@ class BetStrategyTest(TestCase):
 
         self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
 
+    def test_bet_strategy_series_reset_on_lose(self):
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.SERIES,
+            'series': [1, 2, 3]
+        }
+
+        strategy = BetStrategy(settings)
+
+        strategy.last_hand = Hand()
+        strategy.last_hand.result = HandResult.LOSE
+
+        self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
+
     def test_bet_strategy_static(self):
-        strategy = BetStrategy(BetStrategyTest.game_settings, strategy_type=BetStrategyType.STATIC)
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STATIC
+        }
+
+        strategy = BetStrategy(settings)
         self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
 
 
@@ -75,50 +119,72 @@ class PlayerTest(TestCase):
     game_settings = GameSettings(min_bet=10, max_bet=100)
 
     def test___format__(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         self.assertEqual('Player 1  ', '{:10s}'.format(player))
 
+    def test___init___(self):
+        player_settings = {
+            'bankroll': 10000,
+            'bet_limit': 1000,
+            'dealer': True,
+            'game_settings': PlayerTest.game_settings,
+            'number': 10,
+            'unknown': False
+        }
+
+        player = Player(player_settings.copy())
+
+        self.assertEqual(player_settings['bankroll'], player.bankroll)
+        self.assertEqual(player_settings['bet_limit'], player.bet_limit)
+        self.assertEqual(player_settings['dealer'], player.dealer)
+        self.assertEqual(player_settings['number'], player.number)
+        self.assertEqual(player_settings['unknown'], player.extra_settings['unknown'])
+
+    def test___init__without_game_settings(self):
+        with self.assertRaises(ValueError):
+            Player({})
+
     def test___str__player(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         self.assertEqual('Player 1', str(player))
 
     def test___str__dealer(self):
-        dealer = Player(PlayerTest.game_settings, dealer=True)
+        dealer = Player.dealer(PlayerTest.game_settings)
         self.assertEqual('Dealer', str(dealer))
 
     def test_action_basic_strategy_blackjack(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('blackjack')
 
         self.assertEqual(PlayerAction.STAND, player.action(hand, Card('K', 10, 'clubs')))
 
     def test_action_basic_strategy_double_down(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('double_down')
 
         self.assertEqual(PlayerAction.DOUBLE_DOWN, player.action(hand, Card('5', 5, 'clubs')))
 
     def test_action_basic_strategy_double_down_with_three_cards(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('three_card_11')
 
         self.assertEqual(PlayerAction.HIT, player.action(hand, Card('K', 10, 'clubs')))
 
     def test_action_basic_strategy_hard(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('hard')
 
         self.assertEqual(PlayerAction.STAND, player.action(hand, Card('K', 10, 'clubs')))
 
-    def test_action_basic_strategy_low_bankroll_doubledown(self):
-        player = Player(PlayerTest.game_settings, bankroll=0)
+    def test_action_basic_strategy_low_bankroll_double_down(self):
+        player = Player({'bankroll': 0, 'game_settings': PlayerTest.game_settings})
         hand = build_hand('soft')
         hand.bet = 1
 
         self.assertEqual(PlayerAction.HIT, player.action(hand, Card('5', 5, 'clubs')))
 
     def test_action_basic_strategy_low_bankroll_split_hard(self):
-        player = Player(PlayerTest.game_settings, bankroll=0)
+        player = Player({'bankroll': 0, 'game_settings': PlayerTest.game_settings})
 
         hand = build_hand('hard_pair')
         hand.bet = 1
@@ -126,7 +192,7 @@ class PlayerTest(TestCase):
         self.assertEqual(PlayerAction.STAND, player.action(hand, Card('5', 5, 'clubs')))
 
     def test_action_basic_strategy_low_bankroll_split_soft(self):
-        player = Player(PlayerTest.game_settings, bankroll=0)
+        player = Player({'bankroll': 0, 'game_settings': PlayerTest.game_settings})
 
         hand = build_hand('soft_pair')
         hand.bet = 1
@@ -134,13 +200,13 @@ class PlayerTest(TestCase):
         self.assertEqual(PlayerAction.HIT, player.action(hand, Card('5', 5, 'clubs')))
 
     def test_action_basic_strategy_pair(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('soft_pair')
 
         self.assertEqual(PlayerAction.SPLIT, player.action(hand, Card('K', 10, 'clubs')))
 
     def test_action_basic_strategy_soft(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         hand = build_hand('soft')
 
         self.assertEqual(PlayerAction.HIT, player.action(hand, Card('K', 10, 'clubs')))
@@ -158,7 +224,7 @@ class PlayerTest(TestCase):
         self.assertEqual(PlayerAction.STAND, dealer.action(hand, None))
 
     def test_calculate_hand_results(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
 
         hands = [
             build_hand('blackjack'),
@@ -189,7 +255,7 @@ class PlayerTest(TestCase):
 
     def test_new_hand(self):
         bankroll = 100
-        player = Player(PlayerTest.game_settings, bankroll=bankroll)
+        player = Player({'bankroll': bankroll, 'game_settings': PlayerTest.game_settings})
 
         hand = player.new_hand(bet=PlayerTest.game_settings.min_bet)
 
@@ -199,7 +265,7 @@ class PlayerTest(TestCase):
         self.assertEqual(PlayerTest.game_settings.min_bet, hand.bet)
 
     def test_reset_hands(self):
-        player = Player(PlayerTest.game_settings)
+        player = Player({'game_settings': PlayerTest.game_settings})
         self.assertEqual(0, len(player.hands))
 
         player.new_hand()
