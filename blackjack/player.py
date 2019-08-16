@@ -9,6 +9,7 @@ class BetStrategyType(Enum):
     PARLAY = 2
     SERIES = 3
     STATIC = 4
+    STREAK = 5
 
     def __str__(self):
         return str(self.name).title()
@@ -74,14 +75,16 @@ CHART_BASIC_STRATEGY = {
     }
 }
 
+BET_STRATEGY_MAX_HAND_HISTORY = 20
+
 
 class BetStrategy:
     def __init__(self, settings):
         settings = settings.copy()
 
-        self.game_settings = settings.pop('game_settings', None)
-        self.last_hand = None
         self.bet_limit = settings.pop('bet_limit', None)
+        self.game_settings = settings.pop('game_settings', None)
+        self.hand_history = []
         self.strategy_type = settings.pop('strategy_type', None)
 
         self.extra_settings = settings
@@ -92,6 +95,8 @@ class BetStrategy:
             self.strategy = self.__strategy_parlay
         elif self.strategy_type == BetStrategyType.SERIES:
             self.strategy = self.__strategy_series
+        elif self.strategy_type == BetStrategyType.STREAK:
+            self.strategy = self.__strategy_streak
         else:
             self.strategy = self.__strategy_static
 
@@ -134,6 +139,28 @@ class BetStrategy:
     def __strategy_static(self):
         return self.__validate_bet(self.game_settings.min_bet)
 
+    def __strategy_streak(self):
+        streak_rates = self.extra_settings.get('streak_rates', None)
+
+        if not streak_rates or not isinstance(streak_rates, dict) or len(streak_rates) <= 0:
+            raise ValueError('Streak rates are not valid')
+
+        streak_count = 0
+
+        if self.last_hand:
+            for hand in self.hand_history[::-1]:
+                if hand.result == self.last_hand.result == hand.result:
+                    streak_count += 1
+                else:
+                    break
+
+            if self.last_hand.result == HandResult.LOSE:
+                streak_count *= -1
+
+        bet = self.game_settings.min_bet * streak_rates.get(streak_count, 1)
+
+        return self.__validate_bet(bet)
+
     def __validate_bet(self, bet):
         if self.game_settings.max_bet is not None and bet > self.game_settings.max_bet:
             bet = self.game_settings.max_bet
@@ -142,6 +169,15 @@ class BetStrategy:
             bet = self.bet_limit
 
         return bet
+
+    @property
+    def last_hand(self):
+        return self.hand_history[-1] if len(self.hand_history) > 0 else None
+
+    @last_hand.setter
+    def last_hand(self, hand):
+        self.hand_history.append(hand)
+        self.hand_history = self.hand_history[:BET_STRATEGY_MAX_HAND_HISTORY]
 
     def bet(self):
         return self.strategy()

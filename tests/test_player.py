@@ -100,6 +100,89 @@ class BetStrategyTest(TestCase):
 
         self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
 
+    def test_bet_strategy_streak_no_streak_rates(self):
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STREAK
+        }
+
+        strategy = BetStrategy(settings)
+
+        with self.assertRaises(ValueError):
+            strategy.bet()
+
+    def test_bet_strategy_streak_lose_streak(self):
+        streak_rates = {-2: 2, -1: 1, 0: 1, 1: 2, 2: 3}
+
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STREAK,
+            'streak_rates': streak_rates
+        }
+
+        strategy = BetStrategy(settings)
+
+        streak_count = 2
+
+        for _ in range(streak_count):
+            strategy.last_hand = Hand()
+            strategy.last_hand.result = HandResult.LOSE
+
+        self.assertEqual(BetStrategyTest.game_settings.min_bet * streak_rates[streak_count * -1], strategy.bet())
+
+    def test_bet_strategy_streak_mixed_streak(self):
+        streak_rates = {-2: 2, -1: 1, 0: 1, 1: 2, 2: 3}
+
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STREAK,
+            'streak_rates': streak_rates
+        }
+
+        strategy = BetStrategy(settings)
+
+        strategy.last_hand = Hand()
+        strategy.last_hand.result = HandResult.LOSE
+
+        streak_count = 2
+
+        for _ in range(streak_count):
+            strategy.last_hand = Hand()
+            strategy.last_hand.result = HandResult.WIN
+
+        self.assertEqual(BetStrategyTest.game_settings.min_bet * streak_rates[streak_count], strategy.bet())
+
+    def test_bet_strategy_streak_no_streak(self):
+        streak_rates = {-2: 2, -1: 1, 0: 1, 1: 2, 2: 3}
+
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STREAK,
+            'streak_rates': streak_rates
+        }
+
+        strategy = BetStrategy(settings)
+        self.assertEqual(BetStrategyTest.game_settings.min_bet, strategy.bet())
+
+    def test_bet_strategy_streak_win_streak(self):
+        streak_rates = {-2: 2, -1: 1, 0: 1, 1: 2, 2: 3}
+
+        settings = {
+            'game_settings': BetStrategyTest.game_settings,
+            'strategy_type': BetStrategyType.STREAK,
+            'streak_rates': streak_rates
+        }
+
+        strategy = BetStrategy(settings)
+
+        streak_count = 2
+
+        for _ in range(streak_count):
+            strategy.last_hand = Hand()
+            strategy.last_hand.result = HandResult.WIN
+
+        self.assertEqual(BetStrategyTest.game_settings.min_bet * streak_rates[streak_count], strategy.bet())
+
     def test_bet_strategy_static(self):
         settings = {
             'game_settings': BetStrategyTest.game_settings,
