@@ -15,8 +15,8 @@ CARDS_PER_DECK = 52
 
 CUT_CARD_PENETRATION_MIN = 0.25
 CUT_CARD_PENETRATION_MAX = 0.75
-STOP_CARD_PENETRATION_MIN = 0.6
-STOP_CARD_PENETRATION_MAX = 0.7
+STOP_CARD_PENETRATION_MIN = 0.7
+STOP_CARD_PENETRATION_MAX = 0.75
 
 
 class Card(namedtuple('Card', ['rank', 'value', 'suit'])):
@@ -64,13 +64,13 @@ class Shoe:
     def shuffle(self):
         shuffle(self.cards)
 
-        cut_card_min = round(self.num_cards * CUT_CARD_PENETRATION_MIN * self.num_decks)
-        cut_card_max = round(self.num_cards * CUT_CARD_PENETRATION_MAX * self.num_decks)
+        cut_card_min = round(self.num_cards * CUT_CARD_PENETRATION_MIN)
+        cut_card_max = round(self.num_cards * CUT_CARD_PENETRATION_MAX)
 
         cut_card = random.randint(cut_card_min, cut_card_max)
         self.cards = self.cards[cut_card:] + self.cards[:cut_card]
 
-        stop_card_min = round(self.num_cards * STOP_CARD_PENETRATION_MIN * self.num_decks)
-        stop_card_max = round(self.num_cards * STOP_CARD_PENETRATION_MAX * self.num_decks)
+        stop_card_min = round(self.num_cards * STOP_CARD_PENETRATION_MIN)
+        stop_card_max = round(self.num_cards * STOP_CARD_PENETRATION_MAX)
 
         self.stop_card = random.randint(stop_card_min, stop_card_max)

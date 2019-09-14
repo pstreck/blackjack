@@ -1,3 +1,5 @@
+import copy
+
 from enum import Enum
 
 from blackjack.hand import Hand
@@ -49,8 +51,8 @@ CHART_BASIC_STRATEGY = {
     'soft': {
         21: [PlayerAction.STAND] * 10,
         20: [PlayerAction.STAND] * 10,
-        19: [PlayerAction.STAND] * 10,
-        18: [PlayerAction.STAND] + [PlayerAction.DOUBLE_DOWN] * 4 + [PlayerAction.STAND] * 2 + [PlayerAction.HIT] * 3,
+        19: [PlayerAction.STAND] * 4 + [PlayerAction.DOUBLE_DOWN] + [PlayerAction.STAND] * 5,
+        18: [PlayerAction.DOUBLE_DOWN] * 5 + [PlayerAction.STAND] * 2 + [PlayerAction.HIT] * 3,
         17: [PlayerAction.HIT] + [PlayerAction.DOUBLE_DOWN] * 4 + [PlayerAction.HIT] * 5,
         16: [PlayerAction.HIT] * 2 + [PlayerAction.DOUBLE_DOWN] * 3 + [PlayerAction.HIT] * 5,
         15: [PlayerAction.HIT] * 2 + [PlayerAction.DOUBLE_DOWN] * 3 + [PlayerAction.HIT] * 5,
@@ -74,6 +76,11 @@ CHART_BASIC_STRATEGY = {
         '2': [PlayerAction.SPLIT] * 6 + [PlayerAction.HIT] * 4,
     }
 }
+
+CHART_MODIFIED_STRATEGY = copy.deepcopy(CHART_BASIC_STRATEGY)
+CHART_MODIFIED_STRATEGY['hard'][10] = [PlayerAction.DOUBLE_DOWN] * 7 + [PlayerAction.HIT] * 3
+CHART_MODIFIED_STRATEGY['hard'][11] = [PlayerAction.DOUBLE_DOWN] * 8 + [PlayerAction.STAND] * 2
+CHART_MODIFIED_STRATEGY['pair']['A'] = [PlayerAction.SPLIT] * 8 + [PlayerAction.HIT] + [PlayerAction.SPLIT]
 
 BET_STRATEGY_MAX_HAND_HISTORY = 20
 
@@ -155,7 +162,7 @@ class BetStrategy:
                     break
 
             if self.last_hand.result == HandResult.LOSE:
-                streak_count *= -1
+                streak_count -= 1
 
         bet = self.game_settings.min_bet * streak_rates.get(streak_count, 1)
 
@@ -194,6 +201,7 @@ class Player:
         self.dealer = settings.pop('dealer', False)
         self.game_settings = settings.pop('game_settings', None)
         self.number = settings.pop('number', 1)
+        self.player_strategy = settings.pop('player_strategy', CHART_BASIC_STRATEGY)
 
         self.extra_settings = settings
 
@@ -233,7 +241,7 @@ class Player:
 
             chart_index = dealer_card.value - 2
 
-            action = CHART_BASIC_STRATEGY[chart_key][chart_value][chart_index]
+            action = self.player_strategy[chart_key][chart_value][chart_index]
 
             if action == PlayerAction.DOUBLE_DOWN and len(hand.cards) > 2:
                 action = PlayerAction.HIT
@@ -261,7 +269,7 @@ class Player:
             if not hand.result == HandResult.LOSE:
                 self.bankroll += hand.bet + hand.winnings
 
-        self.bet_strategy_type.last_hand = self.hands[-1]
+        self.bet_strategy_type.last_hand = self.hands[-1] if len(self.hands) > 0 else None
 
     @classmethod
     def dealer(cls, game_settings):
@@ -269,6 +277,9 @@ class Player:
 
     def new_hand(self, bet=None):
         hand_number = len(self.hands) + 1
+
+        if self.bankroll < self.game_settings.min_bet:
+            return None
 
         if not self.dealer:
             if not bet:

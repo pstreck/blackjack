@@ -347,6 +347,12 @@ class PlayerTest(TestCase):
         self.assertEqual(1, hand.number)
         self.assertEqual(PlayerTest.game_settings.min_bet, hand.bet)
 
+    def test_new_hand_low_bankroll(self):
+        bankroll = PlayerTest.game_settings.min_bet - 1
+
+        player = Player({'bankroll': bankroll, 'game_settings': PlayerTest.game_settings})
+        self.assertIsNone(player.new_hand(bet=PlayerTest.game_settings.min_bet))
+
     def test_reset_hands(self):
         player = Player({'game_settings': PlayerTest.game_settings})
         self.assertEqual(0, len(player.hands))

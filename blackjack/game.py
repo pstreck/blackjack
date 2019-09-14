@@ -73,11 +73,11 @@ class Game:
         for player in self.players[:-1]:
             player.calculate_hand_results(self.players[-1].hands[0])
 
-        if self.shoe.last_round:
-            self.shoe.reset()
-
     def start(self, rounds=25):
         self.shoe.reset()
 
         for _ in range(rounds):
             self.play_round()
+
+            if self.shoe.last_round:
+                self.shoe.reset()
